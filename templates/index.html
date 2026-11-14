@@ -56,14 +56,10 @@
     <input type="text" id="url" value="{{ url_mac_dinh }}">
     <div class="hint">Trang phải có form tra cứu gồm các ô #mssv, #ma, nút #btn và vùng kết quả #ketqua.</div>
 
-    <label for="file">File Excel danh sách (.xlsx) — không bắt buộc</label>
-    <input type="file" id="file" accept=".xlsx,.xls">
-    <div class="hint">Chỉ cần 2 cột: MSSV + Mã tra cứu — Họ tên, Lớp, điểm trang tra cứu tự trả về.
+    <label for="file">File mã tra cứu (.xlsx) <span style="color:#c53030">* bắt buộc</span></label>
+    <input type="file" id="file" accept=".xlsx,.xls" required>
+    <div class="hint">File chỉ cần 2 cột: MSSV + Mã tra cứu — Họ tên, Lớp, điểm trang tra cứu tự trả về.
       Chấp nhận cả file không có dòng tiêu đề.</div>
-
-    <label for="danhSach">Hoặc dán danh sách vào đây</label>
-    <textarea id="danhSach" placeholder="Mỗi dòng 1 sinh viên — chỉ cần: MSSV, Mã tra cứu&#10;VD: B20DCCN001, VJ2RSV&#10;(có thể thêm Họ tên, Lớp ở giữa nếu muốn)"></textarea>
-    <div class="hint">Chỉ dùng khi không upload file — phân cách bằng dấu phẩy, chấm phẩy, Tab hoặc |</div>
 
     <div class="btns">
       <button id="btnStart" onclick="batDau()">Bắt đầu tra cứu</button>
@@ -111,11 +107,11 @@ const esc = s => String(s ?? "").replace(/[&<>"']/g,
 
 async function batDau() {
   const url = $("url").value.trim();
+  const f = $("file").files[0];
+  if (!f) { $("statusMsg").textContent = "Hãy chọn file mã tra cứu (.xlsx)"; return; }
   const fd = new FormData();
   fd.append("url", url);
-  const f = $("file").files[0];
-  if (f) fd.append("file", f);
-  fd.append("danh_sach", $("danhSach").value);
+  fd.append("file", f);
 
   $("btnStart").disabled = true;
   $("statusMsg").textContent = "Đang khởi tạo...";

@@ -15,7 +15,7 @@ from flask import Flask, request, jsonify, send_file, render_template
 from playwright.sync_api import sync_playwright
 
 from crawler_core import (
-    doc_danh_sach, doc_danh_sach_tu_text, tim_frame_co_form,
+    doc_danh_sach, tim_frame_co_form,
     tra_cuu_mot_sv, luu_excel, LUU_SAU_MOI,
 )
 
@@ -123,17 +123,17 @@ def start():
                         "error": "Link crawl không hợp lệ (phải bắt đầu bằng http:// hoặc https://)"}), 400
 
     f = request.files.get("file")
-    if f and f.filename:
-        try:
-            danh_sach = doc_danh_sach(BytesIO(f.read()))
-        except Exception as e:
-            return jsonify({"ok": False, "error": f"Không đọc được file Excel: {e}"}), 400
-    else:
-        danh_sach = doc_danh_sach_tu_text(request.form.get("danh_sach") or "")
+    if not f or not f.filename:
+        return jsonify({"ok": False,
+                        "error": "Bắt buộc upload file mã tra cứu (.xlsx)"}), 400
+    try:
+        danh_sach = doc_danh_sach(BytesIO(f.read()))
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"Không đọc được file Excel: {e}"}), 400
 
     if not danh_sach:
         return jsonify({"ok": False,
-                        "error": "Chưa có danh sách — hãy upload file .xlsx hoặc dán MSSV + Mã tra cứu"}), 400
+                        "error": "File không có dữ liệu — cần ít nhất cột MSSV + Mã tra cứu"}), 400
 
     don_job_cu()
     job_id = uuid.uuid4().hex[:8]

@@ -109,32 +109,6 @@ def doc_danh_sach(nguon):
     return ds
 
 
-def doc_danh_sach_tu_text(text):
-    """Parse danh sách dán vào ô text. Mỗi dòng: MSSV, Họ tên, Lớp, Mã tra cứu
-    (tối thiểu MSSV + Mã tra cứu; phân cách bằng Tab, dấu phẩy, chấm phẩy, | hoặc khoảng trắng)."""
-    ds = []
-    for dong in (text or "").splitlines():
-        dong = dong.strip()
-        if not dong:
-            continue
-        parts = [p.strip() for p in dong.split("\t")]
-        if len(parts) == 1:
-            parts = [p.strip() for p in re.split(r"[,;|]", dong)]
-        if len(parts) == 1:
-            parts = dong.split()
-        if len(parts) < 2:
-            continue
-        if not ds and ("mssv" in bo_dau(parts[0]) or "ma so" in bo_dau(parts[0])):
-            continue  # bỏ dòng tiêu đề nếu có
-        ds.append({
-            "mssv": parts[0],
-            "ten": parts[1] if len(parts) >= 3 else "",
-            "lop": parts[2] if len(parts) >= 4 else "",
-            "ma": parts[-1],
-        })
-    return ds
-
-
 def luu_excel(cac_hang, file_ra):
     wb = Workbook()
     ws = wb.active
