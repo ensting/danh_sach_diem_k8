@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: tra-cuu-diem
+    runtime: docker
+    plan: free
+    healthCheckPath: /

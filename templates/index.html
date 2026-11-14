@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tra cứu điểm hàng loạt</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Segoe UI", Arial, sans-serif; background: #f0f4f8; color: #1a202c; }
+  .wrap { max-width: 1000px; margin: 24px auto; padding: 0 16px; }
+  h1 { font-size: 22px; margin-bottom: 16px; }
+  .card { background: #fff; border-radius: 10px; padding: 18px 20px; margin-bottom: 16px;
+          box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+  .card h2 { font-size: 15px; color: #2b6cb0; margin-bottom: 12px; }
+  label { display: block; font-size: 13px; font-weight: 600; margin: 10px 0 4px; }
+  input[type=text], textarea, input[type=file] {
+    width: 100%; padding: 9px 10px; border: 1px solid #cbd5e0; border-radius: 6px;
+    font-size: 13px; font-family: inherit; background: #fff;
+  }
+  input[type=text]:focus, textarea:focus { outline: none; border-color: #3182ce; }
+  textarea { resize: vertical; min-height: 90px; font-family: Consolas, monospace; }
+  .hint { font-size: 12px; color: #718096; margin-top: 4px; }
+  .btns { margin-top: 14px; display: flex; gap: 10px; align-items: center; }
+  button { padding: 9px 20px; border: none; border-radius: 6px; font-size: 14px;
+           font-weight: 600; cursor: pointer; }
+  #btnStart { background: #2b6cb0; color: #fff; }
+  #btnStart:disabled { background: #a0aec0; cursor: not-allowed; }
+  #btnStop { background: #e53e3e; color: #fff; display: none; }
+  #btnDown { background: #2f855a; color: #fff; }
+  #btnDown:disabled { background: #a0aec0; cursor: not-allowed; }
+  .stats { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+  .stat { background: #edf2f7; border-radius: 6px; padding: 8px 14px; font-size: 13px; }
+  .stat b { display: block; font-size: 18px; }
+  .bar { height: 10px; background: #e2e8f0; border-radius: 5px; overflow: hidden; margin-bottom: 10px; }
+  .bar i { display: block; height: 100%; width: 0; background: #3182ce; transition: width .3s; }
+  #log { height: 180px; overflow-y: auto; background: #1a202c; color: #c6f6d5;
+         font-family: Consolas, monospace; font-size: 12px; padding: 10px; border-radius: 6px;
+         white-space: pre-wrap; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th, td { border: 1px solid #e2e8f0; padding: 6px 8px; text-align: left; }
+  th { background: #1f4e78; color: #fff; position: sticky; top: 0; }
+  .tbl { max-height: 380px; overflow-y: auto; border-radius: 6px; }
+  tr.ok td.st { color: #2f855a; font-weight: 600; }
+  tr.miss td.st { color: #b7791f; font-weight: 600; }
+  tr.err td.st { color: #c53030; font-weight: 600; }
+  .status-msg { font-size: 13px; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Tra cứu điểm hàng loạt</h1>
+
+  <div class="card">
+    <h2>1. Cấu hình</h2>
+    <label for="url">Link trang tra cứu (URL crawl)</label>
+    <input type="text" id="url" value="{{ url_mac_dinh }}">
+    <div class="hint">Trang phải có form tra cứu gồm các ô #mssv, #ma, nút #btn và vùng kết quả #ketqua.</div>
+
+    <label for="file">File Excel danh sách (.xlsx) — không bắt buộc</label>
+    <input type="file" id="file" accept=".xlsx,.xls">
+    <div class="hint">Chỉ cần 2 cột: MSSV + Mã tra cứu — Họ tên, Lớp, điểm trang tra cứu tự trả về.
+      Chấp nhận cả file không có dòng tiêu đề.</div>
+
+    <label for="danhSach">Hoặc dán danh sách vào đây</label>
+    <textarea id="danhSach" placeholder="Mỗi dòng 1 sinh viên — chỉ cần: MSSV, Mã tra cứu&#10;VD: B20DCCN001, VJ2RSV&#10;(có thể thêm Họ tên, Lớp ở giữa nếu muốn)"></textarea>
+    <div class="hint">Chỉ dùng khi không upload file — phân cách bằng dấu phẩy, chấm phẩy, Tab hoặc |</div>
+
+    <div class="btns">
+      <button id="btnStart" onclick="batDau()">Bắt đầu tra cứu</button>
+      <button id="btnStop" onclick="dungLai()">Dừng</button>
+      <span class="status-msg" id="statusMsg"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>2. Tiến trình</h2>
+    <div class="stats">
+      <div class="stat">Tổng số<b id="sTotal">0</b></div>
+      <div class="stat">Đã xử lý<b id="sDone">0</b></div>
+      <div class="stat">Lỗi<b id="sLoi">0</b></div>
+      <div class="stat">Thời gian<b id="sTime">0s</b></div>
+    </div>
+    <div class="bar"><i id="bar"></i></div>
+    <div id="log"></div>
+  </div>
+
+  <div class="card">
+    <h2>3. Kết quả</h2>
+    <div class="btns" style="margin:0 0 12px">
+      <button id="btnDown" disabled onclick="taiFile()">Tải file Excel</button>
+    </div>
+    <div class="tbl">
+      <table>
+        <thead><tr>
+          <th>MSSV</th><th>Họ và tên</th><th>Lớp</th>
+          <th>Điểm TL (10)</th><th>Điểm TL (4)</th><th>Học lực</th>
+          <th>Số TC</th><th>Trạng thái</th><th>Thời gian</th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+let jobId = null, logFrom = 0, rowFrom = 0, timer = null;
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g,
+  c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+async function batDau() {
+  const url = $("url").value.trim();
+  const fd = new FormData();
+  fd.append("url", url);
+  const f = $("file").files[0];
+  if (f) fd.append("file", f);
+  fd.append("danh_sach", $("danhSach").value);
+
+  $("btnStart").disabled = true;
+  $("statusMsg").textContent = "Đang khởi tạo...";
+  try {
+    const res = await fetch("/api/start", { method: "POST", body: fd });
+    const data = await res.json();
+    if (!data.ok) { $("statusMsg").textContent = "Lỗi: " + data.error; $("btnStart").disabled = false; return; }
+    jobId = data.job_id; logFrom = 0; rowFrom = 0;
+    $("tbody").innerHTML = ""; $("log").textContent = "";
+    $("btnStop").style.display = "inline-block";
+    $("btnDown").disabled = true;
+    $("sTotal").textContent = data.total;
+    $("sDone").textContent = 0; $("sLoi").textContent = 0;
+    $("statusMsg").textContent = "Đang chạy...";
+    poll();
+    timer = setInterval(poll, 1000);
+  } catch (e) {
+    $("statusMsg").textContent = "Lỗi kết nối server";
+    $("btnStart").disabled = false;
+  }
+}
+
+async function poll() {
+  if (!jobId) return;
+  try {
+    const res = await fetch(`/api/status/${jobId}?log_from=${logFrom}&row_from=${rowFrom}`);
+    const d = await res.json();
+    if (!d.ok) return;
+
+    $("sDone").textContent = d.done;
+    $("sLoi").textContent = d.loi;
+    $("sTime").textContent = Math.round(d.elapsed) + "s";
+    $("bar").style.width = (d.total ? d.done / d.total * 100 : 0) + "%";
+
+    if (d.logs.length) {
+      $("log").textContent += d.logs.join("\n") + "\n";
+      $("log").scrollTop = $("log").scrollHeight;
+      logFrom = d.log_next;
+    }
+    for (const r of d.rows) themHang(r);
+    rowFrom = d.row_next;
+    $("btnDown").disabled = !d.co_file;
+
+    if (d.status !== "running" && d.status !== "starting") {
+      clearInterval(timer); timer = null;
+      $("btnStart").disabled = false;
+      $("btnStop").style.display = "none";
+      $("statusMsg").textContent =
+        d.status === "done" ? `Hoàn tất: ${d.done}/${d.total} SV, ${d.loi} lỗi` :
+        d.status === "stopped" ? `Đã dừng: ${d.done}/${d.total} SV đã xử lý` :
+        "Lỗi: " + (d.error || "không rõ");
+    }
+  } catch (e) { /* giữ kết nối, thử lại ở lần poll sau */ }
+}
+
+function themHang(r) {
+  const tr = document.createElement("tr");
+  const st = String(r[7] || "");
+  tr.className = st === "OK" ? "ok" : st.startsWith("Thiếu") ? "miss" : "err";
+  tr.innerHTML = r.map((c, i) =>
+    `<td${i === 7 ? ' class="st"' : ""}>${esc(c)}</td>`).join("");
+  $("tbody").appendChild(tr);
+}
+
+async function dungLai() {
+  if (jobId) await fetch(`/api/stop/${jobId}`, { method: "POST" });
+}
+
+function taiFile() {
+  if (jobId) location.href = `/api/download/${jobId}`;
+}
+</script>
+</body>
+</html>
